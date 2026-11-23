@@ -1,6 +1,12 @@
 from fastapi import FastAPI
 
+from app.routers import chores, households, invites
+
 app = FastAPI(title="Chore Draft")
+
+app.include_router(households.router)
+app.include_router(invites.router)
+app.include_router(chores.router)
 
 
 @app.get("/")
