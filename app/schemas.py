@@ -37,6 +37,7 @@ class ChoreRead(BaseModel):
     description: str | None
     effort_points: int | None
     created_by: int
+    colour: str | None = None
 
 
 class HouseholdRead(BaseModel):
@@ -68,3 +69,5 @@ class InviteRead(BaseModel):
 class ChoreCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=500)
+
+
