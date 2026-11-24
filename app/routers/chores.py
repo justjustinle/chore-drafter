@@ -30,7 +30,6 @@ def create_chore(
         name=body.name,
         description=body.description,
         created_by=creator.id,
-
     )
     storage.chores[chore.id] = chore
     return ChoreRead(**chore.model_dump())

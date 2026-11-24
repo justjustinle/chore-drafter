@@ -43,7 +43,6 @@ class Chore(BaseModel):
     description: str | None
     effort_points: int | None = None
     created_by: int
-    colour: str | None = None
 
 
 # Each dict maps an id (or a token) to a record.

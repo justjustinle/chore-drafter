@@ -25,24 +25,17 @@ def test_description_is_optional(client, household):
     assert response.json()["description"] is None
 
 
-def test_colour_is_optional(client, household):
-    response = add_chore(client, household["id"], {"name": "Bins"})
-
-    assert response.status_code == 201
-    assert response.json()["colour"] is None
-
-
-def test_colour_is_saved_when_given(client, household):
-    response = add_chore(client, household["id"], {"name": "Bins", "colour": "green"})
-
-    assert response.status_code == 201
-    assert response.json()["colour"] == "green"
-
-
 def test_add_chore_with_missing_name_returns_422(client, household):
     response = add_chore(client, household["id"], {"description": "no name"})
 
     assert response.status_code == 422
+
+
+def test_add_chore_with_unknown_field_returns_422(client, household):
+    response = add_chore(client, household["id"], {"name": "Bins", "colur": "green"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "colur"]
 
 
 def test_add_chore_to_missing_household_returns_404(client):
