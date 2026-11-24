@@ -36,6 +36,15 @@ def test_invite_with_bad_email_returns_422(client, household):
     assert response.status_code == 422
 
 
+def test_invite_with_unknown_field_returns_422(client, household):
+    response = client.post(
+        f"/households/{household['id']}/invites",
+        json={"email": "sam@example.com", "role": "owner"},
+    )
+
+    assert response.status_code == 422
+
+
 def test_invite_to_missing_household_returns_404(client):
     response = invite(client, 999)
 

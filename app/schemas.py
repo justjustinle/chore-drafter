@@ -2,12 +2,16 @@
 
 *Create models are what the client sends.
 *Read models are what the server sends back.
+
+Create models use extra="forbid": a field the model does not declare
+(for example a typo like "colur", or "phase") is rejected with a 422
+instead of being silently ignored.
 """
 
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class Phase(StrEnum):
@@ -19,6 +23,8 @@ class Phase(StrEnum):
 # ---------- Households ----------
 
 class HouseholdCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=100)
 
 
@@ -52,6 +58,8 @@ class HouseholdRead(BaseModel):
 # ---------- Invites ----------
 
 class InviteCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
 
 
@@ -66,5 +74,7 @@ class InviteRead(BaseModel):
 # ---------- Chores ----------
 
 class ChoreCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=500)

@@ -23,12 +23,12 @@ def test_creator_becomes_owner_and_first_member(client):
     assert body["owner_member_id"] == owner["id"]
 
 
-def test_client_cannot_choose_phase(client):
-    body = client.post(
+def test_client_cannot_choose_phase_returns_422(client):
+    response = client.post(
         "/households", json={"name": "Flat 4", "phase": "ACTIVE"}, headers=OWNER
-    ).json()
+    )
 
-    assert body["phase"] == Phase.SETUP
+    assert response.status_code == 422
 
 
 def test_create_household_with_empty_name_returns_422(client):

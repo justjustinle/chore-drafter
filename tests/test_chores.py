@@ -31,6 +31,13 @@ def test_add_chore_with_missing_name_returns_422(client, household):
     assert response.status_code == 422
 
 
+def test_add_chore_with_unknown_field_returns_422(client, household):
+    response = add_chore(client, household["id"], {"name": "Bins", "colur": "green"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "colur"]
+
+
 def test_add_chore_to_missing_household_returns_404(client):
     response = add_chore(client, 999, {"name": "Bins"})
 
