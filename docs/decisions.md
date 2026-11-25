@@ -47,6 +47,18 @@ Replaces the spec's decline rule, snake draft and minimum effort.
    function. Layer 5 builds this as a pure function.
 6. **No minimum effort, no snake draft.** `week.minimum_effort` is dropped.
 
+## Data model additions (Layer 2)
+
+See `docs/data-model.md`. Compared with the spec's reference model:
+- `week.status` gains **OPEN**, before AUCTION, for flagging and
+  re-estimation. DRAFTED is renamed **ASSIGNED**, because there is no draft.
+- `week` holds the nomination turn: `nomination_member_id`,
+  `nomination_turn` and `nomination_deadline`.
+- New **`chore_flag`** table for re-estimation flags.
+- `week_chore.assigned_via` is AUCTION or FINISH.
+- `auction_action.timed_out` marks passes the server recorded automatically.
+- `week.minimum_effort` is removed.
+
 ## Still open
 
 - Force-closed estimation with a chore nobody voted on (Layer 3).
