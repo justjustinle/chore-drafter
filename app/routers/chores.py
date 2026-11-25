@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlmodel import Session, select
 
-from app import storage
+from app.db import get_session
+from app.models import Chore, Member, Phase, User
 from app.routers.households import get_household_or_404
-from app.schemas import ChoreCreate, ChoreRead, Phase
+from app.schemas import ChoreCreate, ChoreRead
 
 router = APIRouter(tags=["chores"])
 
@@ -12,34 +14,35 @@ def create_chore(
     household_id: int,
     body: ChoreCreate,
     x_user_email: str = Header(),
+    session: Session = Depends(get_session),
 ) -> ChoreRead:
-    household = get_household_or_404(household_id)
+    household = get_household_or_404(session, household_id)
     if household.phase != Phase.SETUP:
         raise HTTPException(status_code=409, detail="Chores can only be added in SETUP")
 
-    creator = None
-    for m in storage.members.values():
-        if m.household_id == household_id and m.email == x_user_email:
-            creator = m
+    creator = session.exec(
+        select(Member)
+        .join(User, Member.user_id == User.id)
+        .where(Member.household_id == household_id, User.email == x_user_email)
+    ).first()
     if creator is None:
         raise HTTPException(status_code=403, detail="You are not a member of this household")
 
-    chore = storage.Chore(
-        id=storage.next_id(storage.chores),
+    chore = Chore(
         household_id=household_id,
         name=body.name,
         description=body.description,
         created_by=creator.id,
     )
-    storage.chores[chore.id] = chore
-    return ChoreRead(**chore.model_dump())
+    session.add(chore)
+    session.commit()
+    return ChoreRead.model_validate(chore)
 
 
 @router.get("/households/{household_id}/chores")
-def list_chores(household_id: int) -> list[ChoreRead]:
-    get_household_or_404(household_id)
-    return [
-        ChoreRead(**c.model_dump())
-        for c in storage.chores.values()
-        if c.household_id == household_id
-    ]
+def list_chores(household_id: int, session: Session = Depends(get_session)) -> list[ChoreRead]:
+    get_household_or_404(session, household_id)
+    chores = session.exec(
+        select(Chore).where(Chore.household_id == household_id).order_by(Chore.id)
+    ).all()
+    return [ChoreRead.model_validate(chore) for chore in chores]

@@ -1,6 +1,5 @@
-from app import storage
-from app.schemas import Phase
-from tests.conftest import OWNER
+from app.models import Phase
+from tests.conftest import OWNER, set_phase
 
 
 def add_chore(client, household_id: int, json: dict, headers: dict = OWNER):
@@ -45,7 +44,7 @@ def test_add_chore_to_missing_household_returns_404(client):
 
 
 def test_add_chore_outside_setup_returns_409(client, household):
-    storage.households[household["id"]].phase = Phase.ACTIVE
+    set_phase(household["id"], Phase.ACTIVE)
 
     response = add_chore(client, household["id"], {"name": "Bins"})
 

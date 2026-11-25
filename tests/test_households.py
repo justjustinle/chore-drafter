@@ -1,4 +1,7 @@
-from app.schemas import Phase
+from sqlmodel import Session, select
+
+from app.db import engine
+from app.models import Phase, User
 from tests.conftest import OWNER
 
 
@@ -56,6 +59,18 @@ def test_get_missing_household_returns_404(client):
     assert response.status_code == 404
 
 
-def test_storage_is_empty_at_start_of_each_test(client):
+def test_database_is_empty_at_start_of_each_test(client):
     # If the reset fixture did not run, households from earlier tests would exist.
     assert client.get("/households/1").status_code == 404
+
+
+def test_same_person_in_two_households_is_one_user(client):
+    first = client.post("/households", json={"name": "Flat 4"}, headers=OWNER).json()
+    second = client.post("/households", json={"name": "Holiday home"}, headers=OWNER).json()
+
+    # Two separate memberships...
+    assert first["members"][0]["id"] != second["members"][0]["id"]
+    # ...belonging to one user row.
+    with Session(engine) as session:
+        users = session.exec(select(User)).all()
+    assert len(users) == 1
