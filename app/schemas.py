@@ -9,15 +9,10 @@ instead of being silently ignored.
 """
 
 from datetime import datetime
-from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-
-class Phase(StrEnum):
-    SETUP = "SETUP"
-    ESTIMATION = "ESTIMATION"
-    ACTIVE = "ACTIVE"
+from app.models import Phase
 
 
 # ---------- Households ----------
@@ -37,6 +32,8 @@ class MemberRead(BaseModel):
 
 
 class ChoreRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)  # can be built straight from a Chore row
+
     id: int
     household_id: int
     name: str

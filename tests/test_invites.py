@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from app import storage
-from app.schemas import Phase
+from app.models import Phase
+from tests.conftest import set_invite_expiry, set_phase
 
 
 def invite(client, household_id: int, email: str = "sam@example.com"):
@@ -52,7 +52,7 @@ def test_invite_to_missing_household_returns_404(client):
 
 
 def test_invite_during_estimation_returns_409(client, household):
-    storage.households[household["id"]].phase = Phase.ESTIMATION
+    set_phase(household["id"], Phase.ESTIMATION)
 
     response = invite(client, household["id"])
 
@@ -88,7 +88,7 @@ def test_accept_twice_returns_410(client, household):
 
 def test_accept_expired_invite_returns_410(client, household):
     token = token_from(invite(client, household["id"]))
-    storage.invites[token].expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    set_invite_expiry(token, datetime.now(timezone.utc) - timedelta(seconds=1))
 
     response = client.post(f"/invites/{token}/accept", headers={"X-User-Name": "Sam"})
 
@@ -97,7 +97,7 @@ def test_accept_expired_invite_returns_410(client, household):
 
 def test_accept_during_estimation_returns_409(client, household):
     token = token_from(invite(client, household["id"]))
-    storage.households[household["id"]].phase = Phase.ESTIMATION
+    set_phase(household["id"], Phase.ESTIMATION)
 
     response = client.post(f"/invites/{token}/accept", headers={"X-User-Name": "Sam"})
 
