@@ -12,7 +12,7 @@ os.environ.setdefault(
     "DATABASE_URL", "postgresql+psycopg://chore:chore@localhost:5432/chore_draft_test"
 )
 
-from datetime import datetime  # noqa: E402
+from datetime import datetime, timedelta  # noqa: E402
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlmodel import Session, SQLModel, select  # noqa: E402
 
+from app import clock as app_clock  # noqa: E402
 from app.db import engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Household, Invite, Phase  # noqa: E402
@@ -74,3 +75,24 @@ def set_invite_expiry(token: str, expires_at: datetime) -> None:
         invite = session.exec(select(Invite).where(Invite.token == token)).one()
         invite.expires_at = expires_at
         session.commit()
+
+
+class FakeClock:
+    """A clock the test controls. Starts at the real time; advance() moves it on."""
+
+    def __init__(self):
+        self.current = app_clock.now()
+
+    def now(self):
+        return self.current
+
+    def advance(self, seconds: float) -> None:
+        self.current += timedelta(seconds=seconds)
+
+
+@pytest.fixture
+def fake_clock(monkeypatch) -> FakeClock:
+    """Replace app.clock.now for this test, so the test decides what time it is."""
+    clock = FakeClock()
+    monkeypatch.setattr("app.clock.now", clock.now)
+    return clock

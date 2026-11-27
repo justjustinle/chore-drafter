@@ -6,13 +6,14 @@ from sqlalchemy import update
 from sqlmodel import Session, select
 
 from app.db import get_session
+from app.game.rules import INVITE_DAYS
 from app.models import Invite, Member, Phase, User, utc_now
 from app.routers.households import get_household_or_404, get_or_create_user
 from app.schemas import InviteCreate, InviteRead, MemberRead
 
 router = APIRouter(tags=["invites"])
 
-INVITE_LIFETIME = timedelta(days=7)
+INVITE_LIFETIME = timedelta(days=INVITE_DAYS)
 
 
 @router.post("/households/{household_id}/invites", status_code=201)
