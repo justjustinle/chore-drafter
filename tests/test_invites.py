@@ -2,10 +2,11 @@ from datetime import datetime, timedelta, timezone
 
 from app.models import Phase
 from tests.conftest import set_invite_expiry, set_phase
+from tests.helpers import OWNER_EMAIL, as_user, join
 
 
-def invite(client, household_id: int, email: str = "sam@example.com"):
-    return client.post(f"/households/{household_id}/invites", json={"email": email})
+def invite(client, household_id: int, email: str = "sam@example.com", by: str = OWNER_EMAIL):
+    return client.post(f"/households/{household_id}/invites", json={"email": email}, headers=as_user(by))
 
 
 def token_from(invite_response) -> str:
@@ -40,12 +41,13 @@ def test_invite_with_unknown_field_returns_422(client, household):
     response = client.post(
         f"/households/{household['id']}/invites",
         json={"email": "sam@example.com", "role": "owner"},
+        headers=as_user(OWNER_EMAIL),
     )
 
     assert response.status_code == 422
 
 
-def test_invite_to_missing_household_returns_404(client):
+def test_invite_to_missing_household_returns_404(client, household):
     response = invite(client, 999)
 
     assert response.status_code == 404
@@ -67,7 +69,7 @@ def test_accept_invite_adds_member(client, household):
     assert response.status_code == 201
     assert response.json()["display_name"] == "Sam"
     assert response.json()["turn_order"] == 2
-    members = client.get(f"/households/{household['id']}").json()["members"]
+    members = client.get(f"/households/{household['id']}", headers=as_user(OWNER_EMAIL)).json()["members"]
     assert len(members) == 2
 
 
@@ -110,3 +112,20 @@ def test_existing_member_cannot_join_again_returns_409(client, household):
     response = client.post(f"/invites/{token}/accept", headers={"X-User-Name": "Olivia"})
 
     assert response.status_code == 409
+
+
+def test_only_the_owner_can_invite(client, household):
+    join(client, household["id"], "sam@example.com", "Sam")
+
+    response = invite(client, household["id"], "friend@example.com", by="sam@example.com")
+
+    assert response.status_code == 403
+
+
+def test_accepting_returns_the_new_member_s_api_key(client, household):
+    token = token_from(invite(client, household["id"]))
+
+    response = client.post(f"/invites/{token}/accept", headers={"X-User-Name": "Sam"})
+
+    key = response.json()["api_key"]
+    assert client.get(f"/households/{household['id']}", headers={"X-API-Key": key}).status_code == 200

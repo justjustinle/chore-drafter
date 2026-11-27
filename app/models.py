@@ -98,6 +98,8 @@ class Member(SQLModel, table=True):
     display_name: str = Field(max_length=100)
     turn_order: int
     joined_at: datetime = Field(default_factory=utc_now, sa_type=TIMESTAMP)
+    # SHA-256 of the member's API key. The key itself is shown once and never stored.
+    api_key_hash: str | None = Field(default=None, unique=True, max_length=64)
 
 
 class Invite(SQLModel, table=True):

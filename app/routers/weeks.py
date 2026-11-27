@@ -3,8 +3,8 @@ from sqlmodel import Session
 
 from app import idempotency
 from app.db import get_session
-from app.identity import get_caller_email, require_member, require_owner
-from app.models import Household, Week, WeekChore, WeekStatus
+from app.identity import get_caller, require_member, require_owner
+from app.models import Household, Member, Week, WeekChore, WeekStatus
 from app.routers.households import get_household_or_404
 from app.schemas import (
     Assignments,
@@ -33,7 +33,7 @@ def household_of(session: Session, week: Week) -> Household:
 def open_week(
     household_id: int,
     body: WeekCreate,
-    caller: str = Depends(get_caller_email),
+    caller: Member = Depends(get_caller),
     session: Session = Depends(get_session),
 ) -> WeekRead:
     household = get_household_or_404(session, household_id)
@@ -44,7 +44,7 @@ def open_week(
 
 @router.get("/weeks/{week_id}")
 def get_week(
-    week_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    week_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> WeekRead:
     week = weeks.get_week_or_404(session, week_id)
     require_member(session, week.household_id, caller)
@@ -55,7 +55,7 @@ def get_week(
 def flag_chore(
     week_id: int,
     body: FlagCreate,
-    caller: str = Depends(get_caller_email),
+    caller: Member = Depends(get_caller),
     session: Session = Depends(get_session),
 ) -> FlagsRead:
     week = weeks.get_week_or_404(session, week_id)
@@ -66,7 +66,7 @@ def flag_chore(
 
 @router.post("/weeks/{week_id}/estimation/start", status_code=201)
 def start_re_estimation(
-    week_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    week_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> EstimationStatus:
     week = weeks.get_week_or_404(session, week_id)
     household = household_of(session, week)
@@ -77,7 +77,7 @@ def start_re_estimation(
 
 @router.post("/weeks/{week_id}/auction/start")
 def start_auction(
-    week_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    week_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> AuctionState:
     week = weeks.get_week_or_404(session, week_id, lock=True)
     household = household_of(session, week)
@@ -88,7 +88,7 @@ def start_auction(
 
 @router.get("/weeks/{week_id}/auction")
 def get_auction(
-    week_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    week_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> AuctionState:
     week = auction.lock_week(session, week_id)  # also applies any expired turns
     require_member(session, week.household_id, caller)
@@ -107,7 +107,7 @@ def nominate(
     body: NominateRequest,
     request: Request,
     idempotency_key: str | None = IDEMPOTENCY_KEY,
-    caller: str = Depends(get_caller_email),
+    caller: Member = Depends(get_caller),
     session: Session = Depends(get_session),
 ) -> AuctionState:
     week = auction.lock_week(session, week_id)
@@ -124,7 +124,7 @@ def bid(
     body: BidRequest,
     request: Request,
     idempotency_key: str | None = IDEMPOTENCY_KEY,
-    caller: str = Depends(get_caller_email),
+    caller: Member = Depends(get_caller),
     session: Session = Depends(get_session),
 ) -> AuctionState:
     week = auction.lock_week(session, week_id)
@@ -141,7 +141,7 @@ def pass_turn(
     body: PassRequest,
     request: Request,
     idempotency_key: str | None = IDEMPOTENCY_KEY,
-    caller: str = Depends(get_caller_email),
+    caller: Member = Depends(get_caller),
     session: Session = Depends(get_session),
 ) -> AuctionState:
     week = auction.lock_week(session, week_id)
@@ -152,7 +152,7 @@ def pass_turn(
     return finish_action(session, week, member, idempotency_key, request.url.path)
 
 
-def finish_action(session: Session, week: Week, member, key: str | None, path: str) -> AuctionState:
+def finish_action(session: Session, week: Week, member: Member, key: str | None, path: str) -> AuctionState:
     """Build the response, save it under the idempotency key, and commit both
     with the action: all three are stored together, or none of them are."""
     state = auction.auction_state(session, week)
@@ -162,7 +162,7 @@ def finish_action(session: Session, week: Week, member, key: str | None, path: s
 
 @router.post("/weeks/{week_id}/finish")
 def finish_week(
-    week_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    week_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> Assignments:
     week = weeks.get_week_or_404(session, week_id, lock=True)
     household = household_of(session, week)
@@ -173,7 +173,7 @@ def finish_week(
 
 @router.get("/weeks/{week_id}/assignments")
 def get_assignments(
-    week_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    week_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> Assignments:
     week = weeks.get_week_or_404(session, week_id)
     require_member(session, week.household_id, caller)
@@ -182,7 +182,7 @@ def get_assignments(
 
 @router.post("/week-chores/{week_chore_id}/done")
 def mark_done(
-    week_chore_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    week_chore_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> WeekChoreRead:
     week_chore = session.get(WeekChore, week_chore_id)
     if week_chore is None:
@@ -195,7 +195,7 @@ def mark_done(
 
 @router.post("/weeks/{week_id}/close")
 def close_week(
-    week_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    week_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> WeekRead:
     week = weeks.get_week_or_404(session, week_id, lock=True)
     require_owner(session, household_of(session, week), caller)
@@ -205,7 +205,7 @@ def close_week(
 
 @router.get("/households/{household_id}/history")
 def get_history(
-    household_id: int, caller: str = Depends(get_caller_email), session: Session = Depends(get_session)
+    household_id: int, caller: Member = Depends(get_caller), session: Session = Depends(get_session)
 ) -> list[HistoryWeek]:
     get_household_or_404(session, household_id)
     require_member(session, household_id, caller)

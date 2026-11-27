@@ -4,10 +4,18 @@ from fastapi.testclient import TestClient
 
 OWNER_EMAIL = "owner@example.com"
 
+# Each test person's API key, by email. Filled in when they create a household
+# or accept an invite, and emptied before every test (see conftest.py).
+# If the same person joins two households, this holds their latest key.
+KEYS: dict[str, str] = {}
+
 
 def as_user(email: str) -> dict:
-    """Headers that make a request come from this person."""
-    return {"X-User-Email": email}
+    """Headers that make a request come from this person: their API key.
+
+    Someone with no key gets a made-up one, which the server rejects with 401.
+    """
+    return {"X-API-Key": KEYS.get(email, f"no-key-for-{email}")}
 
 
 def create_household(client: TestClient, email: str = OWNER_EMAIL, name: str = "Olivia") -> dict:
@@ -17,14 +25,30 @@ def create_household(client: TestClient, email: str = OWNER_EMAIL, name: str = "
         headers={"X-User-Email": email, "X-User-Name": name},
     )
     assert response.status_code == 201, response.text
+    KEYS[email] = response.json()["api_key"]
     return response.json()
 
 
-def join(client: TestClient, household_id: int, email: str, name: str) -> dict:
-    """Invite someone and have them accept. Returns their member."""
-    invite = client.post(f"/households/{household_id}/invites", json={"email": email})
-    token = invite.json()["link"].split("/")[-2]
+def invite_token(client: TestClient, household_id: int, email: str, owner_email: str = OWNER_EMAIL) -> str:
+    """The owner invites someone; returns the token from the invite link."""
+    response = client.post(
+        f"/households/{household_id}/invites", json={"email": email}, headers=as_user(owner_email)
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["link"].split("/")[-2]
+
+
+def accept(client: TestClient, token: str, email: str, name: str):
+    """Accept an invite; remembers the new member's key."""
     response = client.post(f"/invites/{token}/accept", headers={"X-User-Name": name})
+    if response.status_code == 201:
+        KEYS[email] = response.json()["api_key"]
+    return response
+
+
+def join(client: TestClient, household_id: int, email: str, name: str, owner_email: str = OWNER_EMAIL) -> dict:
+    """Invite someone and have them accept. Returns their member."""
+    response = accept(client, invite_token(client, household_id, email, owner_email), email, name)
     assert response.status_code == 201, response.text
     return response.json()
 

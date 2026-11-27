@@ -1,8 +1,10 @@
 from app.models import Phase
-from tests.conftest import OWNER, set_phase
+from tests.conftest import set_phase
+from tests.helpers import OWNER_EMAIL, as_user, create_household
 
 
-def add_chore(client, household_id: int, json: dict, headers: dict = OWNER):
+def add_chore(client, household_id: int, json: dict, headers: dict | None = None):
+    headers = headers if headers is not None else as_user(OWNER_EMAIL)
     return client.post(f"/households/{household_id}/chores", json=json, headers=headers)
 
 
@@ -37,7 +39,7 @@ def test_add_chore_with_unknown_field_returns_422(client, household):
     assert response.json()["detail"][0]["loc"] == ["body", "colur"]
 
 
-def test_add_chore_to_missing_household_returns_404(client):
+def test_add_chore_to_missing_household_returns_404(client, household):
     response = add_chore(client, 999, {"name": "Bins"})
 
     assert response.status_code == 404
@@ -51,31 +53,33 @@ def test_add_chore_outside_setup_returns_409(client, household):
     assert response.status_code == 409
 
 
-def test_non_member_cannot_add_chore_returns_403(client, household):
-    stranger = {"X-User-Email": "stranger@example.com"}
+def test_member_of_another_household_cannot_add_chore_returns_403(client, household):
+    create_household(client, "stranger@example.com", "Stranger")  # has a valid key, for a different household
 
-    response = add_chore(client, household["id"], {"name": "Bins"}, headers=stranger)
+    response = add_chore(client, household["id"], {"name": "Bins"}, headers=as_user("stranger@example.com"))
 
     assert response.status_code == 403
 
 
+def test_add_chore_without_a_key_returns_401(client, household):
+    response = add_chore(client, household["id"], {"name": "Bins"}, headers={})
+
+    assert response.status_code == 401
+
+
 def test_list_chores_only_shows_this_household(client, household):
-    other = client.post(
-        "/households", json={"name": "Other flat"},
-        headers={"X-User-Email": "x@example.com", "X-User-Name": "X"},
-    ).json()
+    other = create_household(client, "x@example.com", "X")
     add_chore(client, household["id"], {"name": "Bins"})
     add_chore(client, household["id"], {"name": "Hoover"})
-    add_chore(client, other["id"], {"name": "Dishes"},
-              headers={"X-User-Email": "x@example.com"})
+    add_chore(client, other["id"], {"name": "Dishes"}, headers=as_user("x@example.com"))
 
-    response = client.get(f"/households/{household['id']}/chores")
+    response = client.get(f"/households/{household['id']}/chores", headers=as_user(OWNER_EMAIL))
 
     assert response.status_code == 200
     assert [c["name"] for c in response.json()] == ["Bins", "Hoover"]
 
 
-def test_list_chores_for_missing_household_returns_404(client):
-    response = client.get("/households/999/chores")
+def test_list_chores_for_missing_household_returns_404(client, household):
+    response = client.get("/households/999/chores", headers=as_user(OWNER_EMAIL))
 
     assert response.status_code == 404

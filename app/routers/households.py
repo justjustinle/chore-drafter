@@ -3,7 +3,8 @@ from sqlmodel import Session, select
 
 from app.db import get_session
 from app.models import Chore, Household, Member, User
-from app.schemas import ChoreRead, HouseholdCreate, HouseholdRead, MemberRead
+from app.identity import get_caller, new_api_key, require_member
+from app.schemas import ChoreRead, HouseholdCreate, HouseholdCreated, HouseholdRead, MemberRead
 
 router = APIRouter(tags=["households"])
 
@@ -63,7 +64,9 @@ def create_household(
     x_user_email: str = Header(),
     x_user_name: str = Header(),
     session: Session = Depends(get_session),
-) -> HouseholdRead:
+) -> HouseholdCreated:
+    # Creating a household is how you first get a key, so this endpoint
+    # (and accepting an invite) still identify you by email and name.
     user = get_or_create_user(session, x_user_email, x_user_name)
 
     # The household and its owner point at each other, so: create the household,
@@ -72,21 +75,28 @@ def create_household(
     session.add(household)
     session.flush()
 
+    api_key, api_key_hash = new_api_key()
     owner = Member(
         household_id=household.id,
         user_id=user.id,
         display_name=x_user_name,
         turn_order=1,
+        api_key_hash=api_key_hash,
     )
     session.add(owner)
     session.flush()
 
     household.owner_member_id = owner.id
     session.commit()
-    return household_to_read(session, household)
+    return HouseholdCreated(**household_to_read(session, household).model_dump(), api_key=api_key)
 
 
 @router.get("/households/{household_id}")
-def get_household(household_id: int, session: Session = Depends(get_session)) -> HouseholdRead:
+def get_household(
+    household_id: int,
+    caller: Member = Depends(get_caller),
+    session: Session = Depends(get_session),
+) -> HouseholdRead:
     household = get_household_or_404(session, household_id)
+    require_member(session, household_id, caller)
     return household_to_read(session, household)
