@@ -53,6 +53,7 @@ A user's seat in one household.
 | display_name | text | the name shown in this household |
 | turn_order | int | 1, 2, 3… in join order; used for nomination order and tie-breaks |
 | joined_at | datetime | |
+| api_key_hash | text | **unique**; SHA-256 of the member's API key (Layer 8). The key itself is never stored |
 
 **unique (household_id, user_id)**: a user joins a household at most once.
 

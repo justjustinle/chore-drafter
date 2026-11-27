@@ -122,3 +122,20 @@ See `docs/data-model.md`. Compared with the spec's reference model:
   transaction, while the week row is locked.
 - `auction_action.idempotency_key` is replaced by the `idempotency_record`
   table (migration 0003).
+
+## Auth (Layer 8)
+
+- **One API key per member**, created when they create a household or accept an
+  invite, and returned **once** in that response (`api_key`). Only its
+  SHA-256 hash is stored (`member.api_key_hash`, migration 0004).
+- Every endpoint except creating a household and accepting an invite needs
+  `X-API-Key`. A missing or unknown key is **401**; a valid key used on
+  another household is **403**.
+- The `X-User-Email` / `X-User-Name` headers now only identify a *new* person:
+  on `POST /households` (both) and `POST /invites/{token}/accept` (name).
+- A key belongs to one membership. The same person in two households has two
+  keys, and each works only in its own household.
+- **Owner-only:** invites, start and force-close estimation, start
+  re-estimation, start the auction, finish and close a week. Invites now
+  record `invited_by`.
+- Reading a household or its chores now needs membership (the spec said "any").

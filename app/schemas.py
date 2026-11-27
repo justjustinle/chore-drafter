@@ -53,6 +53,14 @@ class HouseholdRead(BaseModel):
     chores: list[ChoreRead]
 
 
+class HouseholdCreated(HouseholdRead):
+    api_key: str  # the owner's key; shown only this once
+
+
+class MemberCreated(MemberRead):
+    api_key: str  # the new member's key; shown only this once
+
+
 # ---------- Invites ----------
 
 class InviteCreate(BaseModel):

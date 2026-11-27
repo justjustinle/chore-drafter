@@ -9,7 +9,8 @@ from app.db import get_session
 from app.game.rules import INVITE_DAYS
 from app.models import Invite, Member, Phase, User, utc_now
 from app.routers.households import get_household_or_404, get_or_create_user
-from app.schemas import InviteCreate, InviteRead, MemberRead
+from app.identity import get_caller, new_api_key, require_owner
+from app.schemas import InviteCreate, InviteRead, MemberCreated
 
 router = APIRouter(tags=["invites"])
 
@@ -21,9 +22,11 @@ def create_invite(
     household_id: int,
     body: InviteCreate,
     request: Request,
+    caller: Member = Depends(get_caller),
     session: Session = Depends(get_session),
 ) -> InviteRead:
     household = get_household_or_404(session, household_id)
+    inviter = require_owner(session, household, caller)
     if household.phase not in (Phase.SETUP, Phase.ACTIVE):
         raise HTTPException(status_code=409, detail="Cannot invite during estimation")
 
@@ -31,6 +34,7 @@ def create_invite(
         household_id=household_id,
         email=body.email,
         token=secrets.token_urlsafe(32),
+        invited_by=inviter.id,
         expires_at=utc_now() + INVITE_LIFETIME,
     )
     session.add(invite)
@@ -52,7 +56,7 @@ def accept_invite(
     token: str,
     x_user_name: str = Header(),
     session: Session = Depends(get_session),
-) -> MemberRead:
+) -> MemberCreated:
     invite = session.exec(select(Invite).where(Invite.token == token)).first()
     if invite is None:
         raise HTTPException(status_code=404, detail="Invite not found")
@@ -88,18 +92,21 @@ def accept_invite(
     member_count = len(
         session.exec(select(Member).where(Member.household_id == household.id)).all()
     )
+    api_key, api_key_hash = new_api_key()
     member = Member(
         household_id=household.id,
         user_id=user.id,
         display_name=x_user_name,
         turn_order=member_count + 1,
+        api_key_hash=api_key_hash,
     )
     session.add(member)
     session.commit()
-    return MemberRead(
+    return MemberCreated(
         id=member.id,
         display_name=member.display_name,
         email=user.email,
         turn_order=member.turn_order,
         joined_at=member.joined_at,
+        api_key=api_key,
     )

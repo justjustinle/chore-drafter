@@ -1,6 +1,6 @@
 import pytest
 
-from tests.helpers import OWNER_EMAIL, add_chore, as_user, create_household, join, vote
+from tests.helpers import OWNER_EMAIL, add_chore, as_user, create_household, invite_token, join, vote
 
 SAM = "sam@example.com"
 
@@ -23,7 +23,7 @@ def test_start_moves_household_to_estimation(client, flat):
     response = start(client, flat["id"])
 
     assert response.status_code == 201
-    assert client.get(f"/households/{flat['id']}").json()["phase"] == "ESTIMATION"
+    assert client.get(f"/households/{flat['id']}", headers=as_user(SAM)).json()["phase"] == "ESTIMATION"
 
 
 def test_only_owner_can_start(client, flat):
@@ -63,8 +63,15 @@ def test_vote_out_of_range_returns_422(client, flat):
 
 def test_non_member_cannot_vote(client, flat):
     start(client, flat["id"])
+    create_household(client, "stranger@example.com", "Stranger")  # a real key, for another household
 
     assert vote(client, flat["id"], flat["bins"], 5, "stranger@example.com").status_code == 403
+
+
+def test_vote_without_a_key_returns_401(client, flat):
+    start(client, flat["id"])
+
+    assert vote(client, flat["id"], flat["bins"], 5, "nobody@example.com").status_code == 401
 
 
 def test_vote_on_unknown_chore_returns_404(client, flat):
@@ -95,7 +102,7 @@ def test_revote_overwrites(client, flat):
     vote(client, flat["id"], flat["bins"], 9, SAM)
     vote(client, flat["id"], flat["hoover"], 1, SAM)
 
-    chores = client.get(f"/households/{flat['id']}/chores").json()
+    chores = client.get(f"/households/{flat['id']}/chores", headers=as_user(SAM)).json()
     assert chores[0]["effort_points"] == 9  # (9 + 9) / 2, not (2 + 9) / 2
 
 
@@ -108,7 +115,7 @@ def test_auto_closes_when_everyone_has_voted(client, flat):
     last = vote(client, flat["id"], flat["hoover"], 6, SAM)
 
     assert last.json()["estimation_closed"] is True
-    household = client.get(f"/households/{flat['id']}").json()
+    household = client.get(f"/households/{flat['id']}", headers=as_user(SAM)).json()
     assert household["phase"] == "ACTIVE"
     efforts = {c["id"]: c["effort_points"] for c in household["chores"]}
     assert efforts == {flat["bins"]: 5, flat["hoover"]: 6}  # 4.5 rounds up to 5
@@ -118,7 +125,7 @@ def test_values_stay_hidden_until_close(client, flat):
     start(client, flat["id"])
     vote(client, flat["id"], flat["bins"], 4, OWNER_EMAIL)
 
-    chores = client.get(f"/households/{flat['id']}/chores").json()
+    chores = client.get(f"/households/{flat['id']}/chores", headers=as_user(SAM)).json()
     assert all(c["effort_points"] is None for c in chores)
 
 
@@ -154,9 +161,8 @@ def test_only_owner_can_force_close(client, flat):
 
 
 def test_cannot_accept_invite_during_estimation(client, flat):
-    invite = client.post(f"/households/{flat['id']}/invites", json={"email": "late@example.com"})
+    token = invite_token(client, flat["id"], "late@example.com")
     start(client, flat["id"])
-    token = invite.json()["link"].split("/")[-2]
 
     response = client.post(f"/invites/{token}/accept", headers={"X-User-Name": "Late"})
 

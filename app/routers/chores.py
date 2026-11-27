@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.identity import get_caller_email, require_member
-from app.models import Chore, Phase
+from app.identity import get_caller, require_member
+from app.models import Chore, Member, Phase
 from app.routers.households import get_household_or_404
 from app.schemas import ChoreCreate, ChoreRead
 
@@ -14,7 +14,7 @@ router = APIRouter(tags=["chores"])
 def create_chore(
     household_id: int,
     body: ChoreCreate,
-    caller: str = Depends(get_caller_email),
+    caller: Member = Depends(get_caller),
     session: Session = Depends(get_session),
 ) -> ChoreRead:
     household = get_household_or_404(session, household_id)
@@ -35,8 +35,13 @@ def create_chore(
 
 
 @router.get("/households/{household_id}/chores")
-def list_chores(household_id: int, session: Session = Depends(get_session)) -> list[ChoreRead]:
+def list_chores(
+    household_id: int,
+    caller: Member = Depends(get_caller),
+    session: Session = Depends(get_session),
+) -> list[ChoreRead]:
     get_household_or_404(session, household_id)
+    require_member(session, household_id, caller)
     chores = session.exec(
         select(Chore).where(Chore.household_id == household_id).order_by(Chore.id)
     ).all()

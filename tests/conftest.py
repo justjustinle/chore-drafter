@@ -42,7 +42,10 @@ def migrated_database():
 
 @pytest.fixture(autouse=True)
 def clear_tables():
-    """Before every test: empty every table and restart the ids at 1."""
+    """Before every test: empty every table, restart the ids at 1, forget API keys."""
+    from tests.helpers import KEYS
+
+    KEYS.clear()
     table_names = ", ".join(f'"{table.name}"' for table in SQLModel.metadata.sorted_tables)
     with engine.begin() as connection:
         connection.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
@@ -55,9 +58,10 @@ def client() -> TestClient:
 
 @pytest.fixture
 def household(client: TestClient) -> dict:
-    """A fresh household in SETUP, created by OWNER."""
-    response = client.post("/households", json={"name": "Flat 4"}, headers=OWNER)
-    return response.json()
+    """A fresh household in SETUP, created by OWNER (whose key is remembered)."""
+    from tests.helpers import create_household
+
+    return create_household(client, OWNER["X-User-Email"], OWNER["X-User-Name"])
 
 
 # Shortcuts for tests that need a state the API cannot reach yet
