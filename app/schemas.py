@@ -12,6 +12,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.game.rules import VOTE_MAX, VOTE_MIN
 from app.models import Phase
 
 
@@ -75,3 +76,45 @@ class ChoreCreate(BaseModel):
 
     name: str = Field(min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=500)
+
+
+# ---------- Estimation ----------
+
+class VoteCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    points: int = Field(ge=VOTE_MIN, le=VOTE_MAX)
+
+
+class VoteRead(BaseModel):
+    chore_id: int
+    points: int  # your own vote only; other people's votes are never shown
+    estimation_closed: bool
+
+
+class VoterStatus(BaseModel):
+    member_id: int
+    display_name: str
+    voted_chore_ids: list[int]  # which chores they have voted on, never the values
+    done: bool
+
+
+class EstimationStatus(BaseModel):
+    round_id: int
+    week_id: int | None
+    opened_at: datetime
+    chore_ids: list[int]
+    voters: list[VoterStatus]
+
+
+class ChoreEffort(BaseModel):
+    chore_id: int
+    effort_points: int
+    vote_count: int
+
+
+class EstimationResult(BaseModel):
+    round_id: int
+    closed_at: datetime
+    force_closed: bool
+    efforts: list[ChoreEffort]

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import Chore, Member, Phase, User
+from app.identity import get_caller_email, require_member
+from app.models import Chore, Phase
 from app.routers.households import get_household_or_404
 from app.schemas import ChoreCreate, ChoreRead
 
@@ -13,20 +14,14 @@ router = APIRouter(tags=["chores"])
 def create_chore(
     household_id: int,
     body: ChoreCreate,
-    x_user_email: str = Header(),
+    caller: str = Depends(get_caller_email),
     session: Session = Depends(get_session),
 ) -> ChoreRead:
     household = get_household_or_404(session, household_id)
     if household.phase != Phase.SETUP:
         raise HTTPException(status_code=409, detail="Chores can only be added in SETUP")
 
-    creator = session.exec(
-        select(Member)
-        .join(User, Member.user_id == User.id)
-        .where(Member.household_id == household_id, User.email == x_user_email)
-    ).first()
-    if creator is None:
-        raise HTTPException(status_code=403, detail="You are not a member of this household")
+    creator = require_member(session, household_id, caller)
 
     chore = Chore(
         household_id=household_id,
