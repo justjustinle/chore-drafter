@@ -87,6 +87,7 @@ def auction_state(session: Session, week: Week) -> AuctionState:
             lot_id=lot.id,
             chore_id=chore.id,
             chore_name=chore.name,
+            chore_description=chore.description,
             effort_points=week_chore.effort_points,
             nominated_by=lot.nominated_by,
             high_bid=lot.high_bid,
@@ -94,6 +95,15 @@ def auction_state(session: Session, week: Week) -> AuctionState:
             turn_member_id=lot.turn_member_id,
             turn_number=lot.turn_number,
             turn_deadline=lot.turn_deadline,
+            passed_member_ids=sorted(
+                set(
+                    session.exec(
+                        select(AuctionAction.member_id).where(
+                            AuctionAction.lot_id == lot.id, AuctionAction.kind == ActionKind.PASS
+                        )
+                    ).all()
+                )
+            ),
         )
     elif week.status == WeekStatus.AUCTION:
         nomination = NominationState(
@@ -125,6 +135,8 @@ def auction_state(session: Session, week: Week) -> AuctionState:
         lot=lot_state,
         members=members,
         unsold_chores=week_chore_reads(session, week.id, only_unsold=True),
+        sold_chores=[c for c in week_chore_reads(session, week.id) if c.assigned_member_id is not None],
+        server_time=clock.now(),
     )
 
 

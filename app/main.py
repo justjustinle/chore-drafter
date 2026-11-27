@@ -1,8 +1,21 @@
+import os
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import chores, estimation, households, invites, weeks
 
 app = FastAPI(title="Chore Draft")
+
+# The browser front end runs on a different address (port 5173 in development,
+# a Vercel URL in production), so the API must say which sites may call it.
+# CORS_ORIGINS is a comma-separated list, e.g. "https://chore-draft.vercel.app".
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(","),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(households.router)
 app.include_router(invites.router)

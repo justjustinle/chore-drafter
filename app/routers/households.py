@@ -2,9 +2,17 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import Chore, Household, Member, User
+from app.models import Chore, EstimationRound, Household, Member, User, Week, WeekStatus
 from app.identity import get_caller, new_api_key, require_member
-from app.schemas import ChoreRead, HouseholdCreate, HouseholdCreated, HouseholdRead, MemberRead
+from app.schemas import (
+    ChoreRead,
+    HouseholdCreate,
+    HouseholdCreated,
+    HouseholdRead,
+    MemberRead,
+    MeRead,
+    WeekSummary,
+)
 
 router = APIRouter(tags=["households"])
 
@@ -47,6 +55,16 @@ def household_to_read(session: Session, household: Household) -> HouseholdRead:
     chores = session.exec(
         select(Chore).where(Chore.household_id == household.id).order_by(Chore.id)
     ).all()
+    current_week = session.exec(
+        select(Week)
+        .where(Week.household_id == household.id, Week.status != WeekStatus.CLOSED)
+        .order_by(Week.opened_at.desc())
+    ).first()
+    open_round = session.exec(
+        select(EstimationRound).where(
+            EstimationRound.household_id == household.id, EstimationRound.closed_at.is_(None)
+        )
+    ).first()
     return HouseholdRead(
         id=household.id,
         name=household.name,
@@ -55,6 +73,12 @@ def household_to_read(session: Session, household: Household) -> HouseholdRead:
         created_at=household.created_at,
         members=members,
         chores=[ChoreRead.model_validate(chore) for chore in chores],
+        current_week=(
+            WeekSummary(id=current_week.id, starts_on=current_week.starts_on, status=current_week.status)
+            if current_week
+            else None
+        ),
+        estimation_open=open_round is not None,
     )
 
 
@@ -100,3 +124,16 @@ def get_household(
     household = get_household_or_404(session, household_id)
     require_member(session, household_id, caller)
     return household_to_read(session, household)
+
+
+@router.get("/me")
+def who_am_i(caller: Member = Depends(get_caller), session: Session = Depends(get_session)) -> MeRead:
+    """Who this API key belongs to. The front end calls it after a key is pasted in."""
+    household = session.get(Household, caller.household_id)
+    return MeRead(
+        member_id=caller.id,
+        household_id=household.id,
+        household_name=household.name,
+        display_name=caller.display_name,
+        is_owner=household.owner_member_id == caller.id,
+    )
