@@ -149,3 +149,11 @@ See `docs/data-model.md`. Compared with the spec's reference model:
 - CORS allowed origins come from `CORS_ORIGINS` (default `http://localhost:5173`).
 - Where the front-end brief predates these decisions (weekly minimum, decline,
   unsold pile, draft), the screens follow this file.
+
+## Hosting
+
+- One Vercel project serves the front end at `/` and the API at `/api`
+  (`api/index.py`, `vercel.json`), instead of the spec's Azure Container Apps.
+  Postgres is Neon. See `docs/deploy.md`.
+- `app/db.py` accepts `postgres://` URLs, skips connection pooling on Vercel,
+  and turns off psycopg prepared statements so a pooled database URL works.

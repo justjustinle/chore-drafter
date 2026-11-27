@@ -53,6 +53,9 @@ Open http://localhost:5173 (the API must be running too), or
 http://localhost:5173/demo to see every screen with pretend data. See
 `docs/layers/layer-11-frontend.md`.
 
+## Deploying
+One Vercel project, with Neon for Postgres. See `docs/deploy.md`.
+
 ## The weekly job
 ```bash
 python -m scripts.weekly open-week

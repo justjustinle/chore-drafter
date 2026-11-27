@@ -19,7 +19,11 @@ import type {
   WeekChore,
 } from "./types";
 
-export const API_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// Where the API lives. On Vercel the API is served by the same project at
+// /api, so a production build defaults to that. In development, the API runs
+// separately on port 8000. VITE_API_URL overrides both.
+export const API_URL: string =
+  import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "/api" : "http://localhost:8000");
 
 /** An error response from the API, with its status code and message. */
 export class ApiError extends Error {
