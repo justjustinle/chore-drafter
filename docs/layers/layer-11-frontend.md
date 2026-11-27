@@ -68,15 +68,9 @@ follow the current rules:
 - State is never shown by colour alone: chips have icons and words, the timer
   has a text countdown, done/not done has a tick and a label.
 
-## Deploying the front end to Vercel
-1. Import the GitHub repo in Vercel and set **Root Directory** to `frontend`.
-   Vercel detects Vite; `vercel.json` sends every path to `index.html` so
-   links like `/invites/<token>` work.
-2. Set the environment variable `VITE_API_URL` to the backend's public URL.
-3. On the backend, set `CORS_ORIGINS` to the Vercel URL.
-
-The backend needs a public host and a hosted Postgres too; that is the
-deployment layer and is not done yet.
+## Deploying
+See `docs/deploy.md`: one Vercel project serves the front end at `/` and the
+API at `/api`, with Neon for Postgres.
 
 ## Interview questions
 1. Why does the timer use the server's deadline and `server_time` instead of counting down 30 seconds locally?
