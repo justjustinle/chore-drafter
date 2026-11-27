@@ -9,15 +9,17 @@ Patterns used throughout:
 - `X | None` means the column may be empty (NULL).
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from enum import StrEnum
 
 import sqlalchemy as sa
 from sqlmodel import Field, SQLModel
 
+from app import clock
+
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return clock.now()
 
 
 def enum_column(enum: type[StrEnum]) -> sa.Enum:

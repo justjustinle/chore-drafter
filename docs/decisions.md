@@ -59,11 +59,23 @@ See `docs/data-model.md`. Compared with the spec's reference model:
 - `auction_action.timed_out` marks passes the server recorded automatically.
 - `week.minimum_effort` is removed.
 
-## Still open
+## Defaults for the open questions (agreed before Layer 3)
 
-- Force-closed estimation with a chore nobody voted on (Layer 3).
-- Placeholder values: vote range 1–10, 30-second turn timer, 7-day invite
-  expiry.
-- Whether the first nominator rotates each week (Layer 4).
-- Whether one flag is enough to re-estimate a chore, or a majority (Layer 4).
-- What a member who joins mid-week gets (tokens, turn order) (Layers 1 and 4).
+1. **Force-close with an unvoted chore:** blocked with **409**, and the
+   message names the chores that have no votes.
+2. **Nomination order across weeks:** the first nominator rotates each week.
+3. **Re-estimation trigger:** one flag is enough to re-estimate a chore.
+4. **Joining mid-week:** a member who joins during a week takes part from the
+   next week. They do not vote in rounds that opened before they joined, and
+   they are not in an auction that started before they joined.
+5. **Placeholder values stay:** votes 1 to 10, a 30-second turn timer, and
+   7-day invites (see `app/game/rules.py`).
+
+## Estimation details (Layer 3)
+
+- The voters in a round are the members whose `joined_at` is not after the
+  round's `opened_at`.
+- Votes are allowed whenever the household has an open round (the first
+  estimation, or a re-estimation during a week), not only in phase ESTIMATION.
+- Owner-only actions (start, force-close) return **403** for anyone else.
+  The caller is identified by `X-User-Email` until Layer 8.
