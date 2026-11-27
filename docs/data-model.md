@@ -194,8 +194,28 @@ Every bid and pass. This is the auction's audit trail.
 | amount | int | null for a pass |
 | turn_number | int | the turn this action was for |
 | timed_out | bool | true if the server recorded a pass because the deadline passed |
-| idempotency_key | text | null if not sent; **unique** when present (Layer 6) |
 | created_at | datetime | |
 
 **unique (lot_id, turn_number)**: only one action can ever be recorded for a turn,
 even if two requests race. This is the last line of defence.
+
+## Reliability
+
+### idempotency_record
+The saved response for an auction request sent with an `Idempotency-Key`
+header (Layer 6, migration 0003). It replaced the spec's
+`auction_action.idempotency_key` column, because nominations create a lot as
+well as an action, and a retry must get back the whole original response.
+
+| column | type | notes |
+|---|---|---|
+| id | int | primary key |
+| member_id | int → member.id | keys belong to one member |
+| key | text | the client's random key |
+| path | text | the endpoint it was used on; reusing a key elsewhere is 422 |
+| status_code | int | |
+| response_body | json | the response sent the first time |
+| created_at | datetime | |
+
+**unique (member_id, key)**
+

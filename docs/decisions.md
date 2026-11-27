@@ -110,3 +110,15 @@ See `docs/data-model.md`. Compared with the spec's reference model:
   is harmless.
 - Marking a chore done twice keeps the first time.
 - History shows each week's snapshot effort, not the chore's current value.
+
+## Reliability (Layer 6)
+
+- `Idempotency-Key` (optional header, up to 100 characters) on nominate, bid
+  and pass. Keys are per member. A repeated key returns the saved response
+  with no new action; the same key on a different endpoint is **422**.
+- Only successful responses are saved. A failed request changed nothing, so
+  retrying it simply runs it again.
+- The action, its response and the idempotency record are committed in one
+  transaction, while the week row is locked.
+- `auction_action.idempotency_key` is replaced by the `idempotency_record`
+  table (migration 0003).

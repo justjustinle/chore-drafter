@@ -1,6 +1,10 @@
 """The live auction: nominate, bid, pass, and the lazy turn timer.
 
-Every function here starts by locking the week row (SELECT ... FOR UPDATE).
+The actions (nominate, bid, pass) do not commit. The router commits once,
+together with the Idempotency-Key record (Layer 6), so the action and the
+saved response are stored together or not at all.
+
+Every request starts by locking the week row (SELECT ... FOR UPDATE).
 Two requests for the same week are therefore handled one after the other,
 never interleaved. The turn_number checks then reject whichever request
 arrived second, and unique (lot_id, turn_number) on auction_action is the
@@ -291,7 +295,6 @@ def nominate(
     record_action(session, lot, member.id, ActionKind.BID, amount=opening_bid, at=now)  # turn 0
     week.nomination_deadline = None
     advance_lot(session, week, lot, now)
-    session.commit()
 
 
 def _require_bidding_turn(session: Session, week: Week, member: Member, turn_number: int) -> AuctionLot:
@@ -321,7 +324,6 @@ def bid(session: Session, week: Week, member: Member, amount: int, turn_number: 
     lot.high_bid = amount
     lot.high_bidder_id = member.id
     advance_lot(session, week, lot, now)
-    session.commit()
 
 
 def pass_turn(session: Session, week: Week, member: Member, turn_number: int) -> None:
@@ -329,4 +331,3 @@ def pass_turn(session: Session, week: Week, member: Member, turn_number: int) ->
     now = clock.now()
     record_action(session, lot, member.id, ActionKind.PASS, at=now)
     advance_lot(session, week, lot, now)
-    session.commit()
