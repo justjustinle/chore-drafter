@@ -231,5 +231,25 @@ class AuctionAction(SQLModel, table=True):
     amount: int | None = None  # empty for a pass
     turn_number: int
     timed_out: bool = False
-    idempotency_key: str | None = Field(default=None, unique=True, max_length=100)
+    created_at: datetime = Field(default_factory=utc_now, sa_type=TIMESTAMP)
+
+
+# ---------- Reliability ----------
+
+class IdempotencyRecord(SQLModel, table=True):
+    """The saved response for a request sent with an Idempotency-Key header.
+
+    If the same member sends the same key again (a retry after a timeout, a
+    double-tap), the server returns this saved response instead of acting twice.
+    """
+
+    __tablename__ = "idempotency_record"
+    __table_args__ = (sa.UniqueConstraint("member_id", "key"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    member_id: int = Field(foreign_key="member.id")
+    key: str = Field(max_length=100)
+    path: str = Field(max_length=200)
+    status_code: int
+    response_body: dict = Field(sa_type=sa.JSON)
     created_at: datetime = Field(default_factory=utc_now, sa_type=TIMESTAMP)

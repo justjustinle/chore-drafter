@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlmodel import Session
 
+from app import idempotency
 from app.db import get_session
 from app.identity import get_caller_email, require_member, require_owner
 from app.models import Household, Week, WeekChore, WeekStatus
@@ -97,44 +98,67 @@ def get_auction(
     return auction.auction_state(session, week)
 
 
+IDEMPOTENCY_KEY = Header(default=None, max_length=100, alias="Idempotency-Key")
+
+
 @router.post("/weeks/{week_id}/auction/nominate")
 def nominate(
     week_id: int,
     body: NominateRequest,
+    request: Request,
+    idempotency_key: str | None = IDEMPOTENCY_KEY,
     caller: str = Depends(get_caller_email),
     session: Session = Depends(get_session),
 ) -> AuctionState:
     week = auction.lock_week(session, week_id)
     member = require_member(session, week.household_id, caller)
+    if saved := idempotency.replay(session, member, idempotency_key, request.url.path):
+        return saved
     auction.nominate(session, week, member, body.chore_id, body.opening_bid, body.turn_number)
-    return auction.auction_state(session, week)
+    return finish_action(session, week, member, idempotency_key, request.url.path)
 
 
 @router.post("/weeks/{week_id}/auction/bid")
 def bid(
     week_id: int,
     body: BidRequest,
+    request: Request,
+    idempotency_key: str | None = IDEMPOTENCY_KEY,
     caller: str = Depends(get_caller_email),
     session: Session = Depends(get_session),
 ) -> AuctionState:
     week = auction.lock_week(session, week_id)
     member = require_member(session, week.household_id, caller)
+    if saved := idempotency.replay(session, member, idempotency_key, request.url.path):
+        return saved
     auction.bid(session, week, member, body.amount, body.turn_number)
-    return auction.auction_state(session, week)
+    return finish_action(session, week, member, idempotency_key, request.url.path)
 
 
 @router.post("/weeks/{week_id}/auction/pass")
 def pass_turn(
     week_id: int,
     body: PassRequest,
+    request: Request,
+    idempotency_key: str | None = IDEMPOTENCY_KEY,
     caller: str = Depends(get_caller_email),
     session: Session = Depends(get_session),
 ) -> AuctionState:
     week = auction.lock_week(session, week_id)
     member = require_member(session, week.household_id, caller)
+    if saved := idempotency.replay(session, member, idempotency_key, request.url.path):
+        return saved
     auction.pass_turn(session, week, member, body.turn_number)
-    return auction.auction_state(session, week)
+    return finish_action(session, week, member, idempotency_key, request.url.path)
 
+
+def finish_action(session: Session, week: Week, member, key: str | None, path: str) -> AuctionState:
+    """Build the response, save it under the idempotency key, and commit both
+    with the action: all three are stored together, or none of them are."""
+    state = auction.auction_state(session, week)
+    idempotency.save(session, member, key, path, state)
+    session.commit()
+    return state
 
 @router.post("/weeks/{week_id}/finish")
 def finish_week(
