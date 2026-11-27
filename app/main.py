@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import chores, estimation, households, invites
+from app.routers import chores, estimation, households, invites, weeks
 
 app = FastAPI(title="Chore Draft")
 
@@ -8,6 +8,7 @@ app.include_router(households.router)
 app.include_router(invites.router)
 app.include_router(chores.router)
 app.include_router(estimation.router)
+app.include_router(weeks.router)
 
 
 @app.get("/")

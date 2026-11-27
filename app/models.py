@@ -164,6 +164,7 @@ class Week(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     household_id: int = Field(foreign_key="household.id")
     starts_on: date
+    opened_at: datetime = Field(default_factory=utc_now, sa_type=TIMESTAMP)
     status: WeekStatus = Field(default=WeekStatus.OPEN, sa_type=enum_column(WeekStatus))
     nomination_member_id: int | None = Field(default=None, foreign_key="member.id")
     nomination_turn: int = 0

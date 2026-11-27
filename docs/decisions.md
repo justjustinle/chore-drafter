@@ -79,3 +79,23 @@ See `docs/data-model.md`. Compared with the spec's reference model:
   estimation, or a re-estimation during a week), not only in phase ESTIMATION.
 - Owner-only actions (start, force-close) return **403** for anyone else.
   The caller is identified by `X-User-Email` until Layer 8.
+
+## Weeks and auction details (Layer 4)
+
+- **Extra endpoints** the spec needed but did not list:
+  - `GET /weeks/{id}`: the week and its chores.
+  - `POST /weeks/{id}/estimation/start` (owner): opens the re-estimation round
+    for flagged chores. Votes use the normal estimation vote endpoint.
+  - `POST /weeks/{id}/auction/start` (owner): moves the week from OPEN to
+    AUCTION. Blocked while flagged chores have not been re-estimated.
+- `week.opened_at` (migration 0002) records when a week opened. The members
+  playing a week are those who had joined by then.
+- **The row lock is on the week**, not the lot. Nominations happen between
+  lots, so the week is the one row every auction action shares.
+- **Order of checks:** a stale `turn_number` is **409** whoever sent it; only
+  then is the wrong member **403**. A late or repeated click always reads as
+  "that turn has moved on".
+- Spending more tokens than you have is **409**.
+- The nominator's opening bid is stored as a BID action with turn number 0.
+- `GET /weeks/{id}/auction` also works once the week is ASSIGNED, so polling
+  clients see the auction end.

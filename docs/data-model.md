@@ -117,6 +117,7 @@ round. Voting again overwrites the earlier vote.
 | id | int | primary key |
 | household_id | int → household.id | |
 | starts_on | date | |
+| opened_at | datetime | when the week opened; members who joined later play from next week |
 | status | OPEN / AUCTION / ASSIGNED / CLOSED | OPEN is for flagging and re-estimation before the auction |
 | nomination_member_id | int → member.id | null outside the auction; whose turn it is to nominate |
 | nomination_turn | int | increases every nomination turn; used to reject stale requests |

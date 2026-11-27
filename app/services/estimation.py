@@ -22,6 +22,7 @@ from app.models import (
     Household,
     Member,
     Phase,
+    Week,
     WeekChore,
 )
 from app.schemas import ChoreEffort, EstimationResult, EstimationStatus, VoterStatus
@@ -58,13 +59,20 @@ def chores_in_round(session: Session, estimation_round: EstimationRound) -> list
 
 
 def voters_in_round(session: Session, estimation_round: EstimationRound) -> list[Member]:
-    """The voters are the members who had joined when the round opened."""
+    """The voters are the members who had joined when the round opened.
+
+    For a re-estimation during a week, it is the members who had joined
+    when the week opened (someone joining mid-week plays from next week).
+    """
+    cutoff = estimation_round.opened_at
+    if estimation_round.week_id is not None:
+        cutoff = session.get(Week, estimation_round.week_id).opened_at
     return list(
         session.exec(
             select(Member)
             .where(
                 Member.household_id == estimation_round.household_id,
-                Member.joined_at <= estimation_round.opened_at,
+                Member.joined_at <= cutoff,
             )
             .order_by(Member.turn_order)
         ).all()
@@ -98,7 +106,7 @@ def cast_vote(
     """Record (or overwrite) a vote. Returns True if this vote closed the round."""
     estimation_round = require_open_round(session, household.id, lock=True)
 
-    if voter.joined_at > estimation_round.opened_at:
+    if voter.id not in {member.id for member in voters_in_round(session, estimation_round)}:
         raise HTTPException(status_code=403, detail="You joined after this estimation opened")
     if chore_id not in {chore.id for chore in chores_in_round(session, estimation_round)}:
         raise HTTPException(status_code=404, detail="Chore is not part of this estimation")

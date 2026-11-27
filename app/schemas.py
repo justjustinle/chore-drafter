@@ -8,12 +8,12 @@ Create models use extra="forbid": a field the model does not declare
 instead of being silently ignored.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.game.rules import VOTE_MAX, VOTE_MIN
-from app.models import Phase
+from app.models import AssignedVia, Phase, WeekStatus
 
 
 # ---------- Households ----------
@@ -118,3 +118,99 @@ class EstimationResult(BaseModel):
     closed_at: datetime
     force_closed: bool
     efforts: list[ChoreEffort]
+
+
+# ---------- Weeks ----------
+
+class WeekCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    starts_on: date | None = None  # defaults to today
+
+
+class WeekChoreRead(BaseModel):
+    id: int
+    chore_id: int
+    name: str
+    effort_points: int  # the value that applies this week
+    assigned_member_id: int | None
+    assigned_via: AssignedVia | None
+    price_paid: int | None
+    done_at: datetime | None
+
+
+class WeekRead(BaseModel):
+    id: int
+    household_id: int
+    starts_on: date
+    status: WeekStatus
+    chores: list[WeekChoreRead]
+
+
+class FlagCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    chore_id: int
+
+
+class FlagsRead(BaseModel):
+    week_id: int
+    flagged_chore_ids: list[int]
+
+
+# ---------- Auction ----------
+
+class NominateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    chore_id: int
+    opening_bid: int = Field(ge=1)
+    turn_number: int
+
+
+class BidRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: int = Field(ge=1)
+    turn_number: int
+
+
+class PassRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    turn_number: int
+
+
+class NominationState(BaseModel):
+    member_id: int
+    turn_number: int
+    deadline: datetime
+
+
+class LotState(BaseModel):
+    lot_id: int
+    chore_id: int
+    chore_name: str
+    effort_points: int
+    nominated_by: int
+    high_bid: int
+    high_bidder_id: int
+    turn_member_id: int
+    turn_number: int
+    turn_deadline: datetime
+
+
+class MemberTokens(BaseModel):
+    member_id: int
+    display_name: str
+    tokens_left: int
+    effort_won: int
+
+
+class AuctionState(BaseModel):
+    week_id: int
+    status: WeekStatus
+    nomination: NominationState | None  # set when someone must nominate
+    lot: LotState | None  # set while a chore is being bid on
+    members: list[MemberTokens]
+    unsold_chores: list[WeekChoreRead]
