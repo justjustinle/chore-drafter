@@ -99,3 +99,14 @@ See `docs/data-model.md`. Compared with the spec's reference model:
 - The nominator's opening bid is stored as a BID action with turn number 0.
 - `GET /weeks/{id}/auction` also works once the week is ASSIGNED, so polling
   clients see the auction end.
+
+## Finish, results and history (Layer 5)
+
+- `POST /weeks/{id}/finish` (owner) replaces the spec's `POST /weeks/{id}/draft`.
+  It works from OPEN or AUCTION. A chore that is mid-auction goes to its
+  current high bidder at their bid; every other unsold chore is assigned by
+  `app/game/finish.py`.
+- `POST /weeks/{id}/close` (owner) is new: ASSIGNED → CLOSED. Closing twice
+  is harmless.
+- Marking a chore done twice keeps the first time.
+- History shows each week's snapshot effort, not the chore's current value.
