@@ -43,6 +43,12 @@ class ChoreRead(BaseModel):
     created_by: int
 
 
+class WeekSummary(BaseModel):
+    id: int
+    starts_on: date
+    status: WeekStatus
+
+
 class HouseholdRead(BaseModel):
     id: int
     name: str
@@ -51,6 +57,18 @@ class HouseholdRead(BaseModel):
     created_at: datetime
     members: list[MemberRead]
     chores: list[ChoreRead]
+    current_week: WeekSummary | None  # the latest week that is not closed yet
+    estimation_open: bool  # true while a voting round (first or re-estimation) is open
+
+
+class MeRead(BaseModel):
+    """Who the API key belongs to."""
+
+    member_id: int
+    household_id: int
+    household_name: str
+    display_name: str
+    is_owner: bool
 
 
 class HouseholdCreated(HouseholdRead):
@@ -140,6 +158,7 @@ class WeekChoreRead(BaseModel):
     id: int
     chore_id: int
     name: str
+    description: str | None
     effort_points: int  # the value that applies this week
     assigned_member_id: int | None
     assigned_via: AssignedVia | None
@@ -153,6 +172,7 @@ class WeekRead(BaseModel):
     starts_on: date
     status: WeekStatus
     chores: list[WeekChoreRead]
+    flagged_chore_ids: list[int]
 
 
 class FlagCreate(BaseModel):
@@ -199,6 +219,7 @@ class LotState(BaseModel):
     lot_id: int
     chore_id: int
     chore_name: str
+    chore_description: str | None
     effort_points: int
     nominated_by: int
     high_bid: int
@@ -206,6 +227,7 @@ class LotState(BaseModel):
     turn_member_id: int
     turn_number: int
     turn_deadline: datetime
+    passed_member_ids: list[int]  # who has passed on this chore so far
 
 
 class MemberTokens(BaseModel):
@@ -222,6 +244,8 @@ class AuctionState(BaseModel):
     lot: LotState | None  # set while a chore is being bid on
     members: list[MemberTokens]
     unsold_chores: list[WeekChoreRead]
+    sold_chores: list[WeekChoreRead]
+    server_time: datetime  # lets clients line their clock up with the server's deadlines
 
 
 # ---------- Results ----------

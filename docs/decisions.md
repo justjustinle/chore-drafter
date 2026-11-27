@@ -139,3 +139,13 @@ See `docs/data-model.md`. Compared with the spec's reference model:
   re-estimation, start the auction, finish and close a week. Invites now
   record `invited_by`.
 - Reading a household or its chores now needs membership (the spec said "any").
+
+## Front end (Layer 11)
+
+- React + TypeScript with Vite, in `frontend/`. See `docs/layers/layer-11-frontend.md`.
+- New endpoint `GET /me`; households gain `current_week` and `estimation_open`;
+  weeks gain `flagged_chore_ids`; week chores gain `description`; the auction
+  state gains `passed_member_ids`, `sold_chores` and `server_time`.
+- CORS allowed origins come from `CORS_ORIGINS` (default `http://localhost:5173`).
+- Where the front-end brief predates these decisions (weekly minimum, decline,
+  unsold pile, draft), the screens follow this file.

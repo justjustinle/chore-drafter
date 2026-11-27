@@ -64,6 +64,7 @@ def week_chore_reads(session: Session, week_id: int, only_unsold: bool = False) 
             id=week_chore.id,
             chore_id=chore.id,
             name=chore.name,
+            description=chore.description,
             effort_points=week_chore.effort_points,
             assigned_member_id=week_chore.assigned_member_id,
             assigned_via=week_chore.assigned_via,
@@ -81,6 +82,7 @@ def week_read(session: Session, week: Week) -> WeekRead:
         starts_on=week.starts_on,
         status=week.status,
         chores=week_chore_reads(session, week.id),
+        flagged_chore_ids=flagged_chore_ids(session, week.id),
     )
 
 

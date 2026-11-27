@@ -38,6 +38,21 @@ tables, and `docs/layers/` explains each layer with interview questions.
 3. Invite people with `POST /households/{id}/invites`; they accept with
    `POST /invites/{token}/accept` and get their own key.
 
+## The front end
+
+```bash
+cd frontend
+```
+```bash
+npm install
+```
+```bash
+npm run dev
+```
+Open http://localhost:5173 (the API must be running too), or
+http://localhost:5173/demo to see every screen with pretend data. See
+`docs/layers/layer-11-frontend.md`.
+
 ## The weekly job
 ```bash
 python -m scripts.weekly open-week
