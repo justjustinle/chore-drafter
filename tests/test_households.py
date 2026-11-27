@@ -88,3 +88,10 @@ def test_get_household_with_a_wrong_key_returns_401(client, household):
     response = client.get(f"/households/{household['id']}", headers={"X-API-Key": "cd_made_up"})
 
     assert response.status_code == 401
+
+
+def test_database_health_check_reports_the_migration(client):
+    response = client.get("/health/db")
+
+    assert response.status_code == 200
+    assert response.json() == {"database": "ok", "migration": "0004"}
