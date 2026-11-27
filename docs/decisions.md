@@ -157,3 +157,8 @@ See `docs/data-model.md`. Compared with the spec's reference model:
   Postgres is Neon. See `docs/deploy.md`.
 - `app/db.py` accepts `postgres://` URLs, skips connection pooling on Vercel,
   and turns off psycopg prepared statements so a pooled database URL works.
+- Neon project `gentle-flower-56760106`, branch `production`, set up with the
+  Neon CLI (`neon.ts`). The app uses the pooled `DATABASE_URL`; Alembic uses
+  the direct `DATABASE_URL_UNPOOLED`. Both are read from the environment, or
+  from `.env.local` locally. The tests always use the local test database and
+  refuse to run against a Neon host.

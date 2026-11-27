@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 .idea/
 .env
+.neon
+node_modules/
+.env.local
+
+.env.*.local

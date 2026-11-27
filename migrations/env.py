@@ -1,16 +1,21 @@
 """Alembic runs this file for every migration command.
 
-It connects to DATABASE_URL (see app/db.py) and compares the database
-with the tables defined in app/models.py.
+It connects with the DIRECT connection, MIGRATION_URL (DATABASE_URL_UNPOOLED
+if set, otherwise DATABASE_URL; see app/db.py), and compares the database with
+the tables defined in app/models.py.
 """
 
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 from app import models  # noqa: F401  (importing registers every table on SQLModel.metadata)
-from app.db import engine
+from app.db import MIGRATION_URL
+
+engine = create_engine(MIGRATION_URL, poolclass=NullPool)
 
 config = context.config
 if config.config_file_name is not None:

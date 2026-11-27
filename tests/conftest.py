@@ -6,11 +6,17 @@ separate from the dev database so running the tests never touches dev data.
 
 import os
 
-# Point the app at the test database. This must happen before anything
-# imports app.db, because that is where the engine is created.
-os.environ.setdefault(
-    "DATABASE_URL", "postgresql+psycopg://chore:chore@localhost:5432/chore_draft_test"
+# Point the app AND the migrations at the test database. This must happen
+# before anything imports app.db, because that is where the engines are made.
+# Both are set unconditionally: the tests empty and rebuild this database, so
+# they must never pick up a real DATABASE_URL from the shell or .env.local.
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql+psycopg://chore:chore@localhost:5432/chore_draft_test"
 )
+if "neon.tech" in TEST_DATABASE_URL:
+    raise RuntimeError("Refusing to run the tests against a Neon database: they delete every row.")
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ["DATABASE_URL_UNPOOLED"] = TEST_DATABASE_URL
 
 from datetime import datetime, timedelta  # noqa: E402
 

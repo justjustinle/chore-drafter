@@ -16,46 +16,41 @@ The database is hosted Postgres from **Neon**, connected through Vercel.
    `vercel.json` sets the install command, build command and output folder,
    so leave the framework preset as it is.
 
-2. **Create the database.** In the project, open the **Storage** tab →
-   **Create Database** → **Neon (Serverless Postgres)** → follow the steps,
-   and connect it to this project for all environments. Vercel then adds
-   environment variables to the project, including:
-   - `DATABASE_URL`: the *pooled* connection (its host contains `-pooler`).
-     The app uses this.
-   - `DATABASE_URL_UNPOOLED`: a *direct* connection. Use this one for migrations.
+2. **The database.** It already exists: Neon project `gentle-flower-56760106`,
+   branch `production` (set up with `neon init` and `neon deploy`; `neon.ts` is
+   its config). Copy its two connection strings from the Neon console
+   (**Connect** button), or run `neon env pull` on your PC to get them in
+   `.env.local`:
+   - `DATABASE_URL`: the *pooled* connection (host contains `-pooler`). The app uses this.
+   - `DATABASE_URL_UNPOOLED`: the *direct* connection. Migrations use this.
 
-   `app/db.py` turns Neon's `postgres://...` URLs into the form SQLAlchemy
-   needs, and on Vercel opens one connection per request (no pool), which is
-   what a pooled serverless database expects.
+   In Vercel, open **Settings → Environment Variables** and add both, for
+   Production, Preview and Development.
 
-3. **Create the tables (run once, from your PC).** Copy the value of
-   `DATABASE_URL_UNPOOLED` from *Settings → Environment Variables*. Then, in
-   the project folder with your venv active:
+   `app/db.py` turns Neon's `postgresql://...` URLs into the form SQLAlchemy
+   needs, and on Vercel opens one connection per request (no pool) with
+   prepared statements off, which is what Neon's pooled connection expects.
 
-   PowerShell:
-   ```powershell
-   $env:DATABASE_URL = "paste-the-unpooled-url-here"
+3. **Create the tables (run once, from your PC).** Neon's CLI writes the
+   connection strings into `.env.local`, which the app and Alembic read
+   automatically (Alembic uses the direct one):
+   ```bash
+   npm i -g neon@latest
    ```
-   ```powershell
+   ```bash
+   neon login
+   ```
+   ```bash
+   neon env pull
+   ```
+   ```bash
    alembic upgrade head
    ```
-   ```powershell
-   Remove-Item Env:DATABASE_URL
-   ```
+   Run `alembic upgrade head` again whenever a new migration is merged.
 
-   cmd:
-   ```bat
-   set DATABASE_URL=paste-the-unpooled-url-here
-   ```
-   ```bat
-   alembic upgrade head
-   ```
-   ```bat
-   set DATABASE_URL=
-   ```
-
-   The last line points your terminal back at your local Docker database.
-   Run `alembic upgrade head` like this again whenever a new migration is merged.
+   While `.env.local` exists, `fastapi dev` on your PC also uses Neon. Rename
+   or delete it to go back to the local Docker database. The tests always use
+   the local test database, whatever `.env.local` says.
 
 4. **Redeploy** (*Deployments → ⋯ → Redeploy*), or push to `main`.
 
