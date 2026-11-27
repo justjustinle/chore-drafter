@@ -214,3 +214,34 @@ class AuctionState(BaseModel):
     lot: LotState | None  # set while a chore is being bid on
     members: list[MemberTokens]
     unsold_chores: list[WeekChoreRead]
+
+
+# ---------- Results ----------
+
+class MemberEffort(BaseModel):
+    member_id: int
+    display_name: str
+    effort: int
+    tokens_spent: int
+
+
+class Assignments(BaseModel):
+    week_id: int
+    status: WeekStatus
+    chores: list[WeekChoreRead]
+    members: list[MemberEffort]
+
+
+class HistoryChore(BaseModel):
+    name: str
+    effort_points: int
+    assigned_to: str | None
+    assigned_via: AssignedVia | None
+    price_paid: int | None
+    done: bool
+
+
+class HistoryWeek(BaseModel):
+    week_id: int
+    starts_on: date
+    chores: list[HistoryChore]

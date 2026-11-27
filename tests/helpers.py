@@ -111,3 +111,11 @@ def pass_turn(client, week_id: int, email: str, turn_number: int):
     return client.post(
         f"/weeks/{week_id}/auction/pass", json={"turn_number": turn_number}, headers=as_user(email)
     )
+
+
+def finish(client: TestClient, week_id: int, email: str = OWNER_EMAIL):
+    return client.post(f"/weeks/{week_id}/finish", headers=as_user(email))
+
+
+def close_week(client: TestClient, week_id: int, email: str = OWNER_EMAIL):
+    return client.post(f"/weeks/{week_id}/close", headers=as_user(email))
